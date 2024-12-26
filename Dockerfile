@@ -31,6 +31,8 @@ ENV MIX_ENV="prod"
 
 COPY --from=build --chown=nobody:root /app/_build/prod/rel/open_plaato_keg ./
 
+RUN mkdir -p /db && chown nobody /db
+
 USER nobody
 
 CMD ["./bin/open_plaato_keg", "start"]
