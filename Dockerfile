@@ -1,5 +1,6 @@
 FROM elixir:1.16-alpine AS build
 
+ENV ERL_FLAGS="+JPperf true"
 ENV MIX_ENV=prod
 RUN mix local.hex --force && \
     mix local.rebar --force
