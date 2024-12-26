@@ -41,12 +41,13 @@ jobs:
       - uses: paulhatch/semantic-version@v5.3.0
         id: version
 
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@v2
         id: create_release
         with:
           generate_release_notes: "true"
           name: v${{ steps.version.outputs.version }}
           tag_name: v${{ steps.version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Write version to file
         run: echo "${{ steps.version.outputs.version }}" > /.release/version
