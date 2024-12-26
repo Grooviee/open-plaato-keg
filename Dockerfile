@@ -1,4 +1,4 @@
-FROM elixir:1.16-alpine AS build
+FROM --platform=$BUILDPLATFORM elixir:1.16-alpine AS build
 
 ENV ERL_FLAGS="+JPperf true"
 ENV MIX_ENV=prod
@@ -18,10 +18,10 @@ RUN mix release
 
 
 
-FROM erlang:24-alpine
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+FROM --platform=$BUILDPLATFORM erlang:24-alpine
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
 
 RUN apk add --no-cache ca-certificates libsasl libstdc++ lz4-libs zlib ncurses-libs openssl bash libcrypto3 curl
 
