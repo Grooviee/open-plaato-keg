@@ -3,6 +3,8 @@ defmodule OpenPlaatoKeg.Models.KegDataOutput do
   alias OpenPlaatoKeg.Models.KegDataCalibration
 
   defstruct id: nil,
+            name: nil,
+            full_weight: nil,
             weight_raw: nil,
             weight_raw_unit: nil,
             temperature_raw: nil,
