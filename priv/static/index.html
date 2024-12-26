@@ -1,49 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebSocket Test</title>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    #messages { padding: 10px; word-wrap: break-word; }
-    #input { margin-top: 10px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kegs</title>
+    <style>
+      @import url("style.css");
+    </style>
 </head>
 <body>
-  <h1>WebSocket Test</h1>
-  <div id="messages"></div>
+  <div id="header_container">
+    <div id="page_container" class="container pageEntry"></div>
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+      <div class="navbar-brand">
+        <a
+          role="button"
+          class="navbar-burger burger"
+          aria-label="menu"
+          aria-expanded="false"
+          data-target="navbarMenu"
+        >
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </a>
+      </div>
 
-  <script>
-    const ws = new WebSocket('/ws');
+      <div id="navbarMenu" class="navbar-menu">
+        <div class="navbar-start">
+          <a class="navbar-item" href="/index.html"> Home </a>
+          <a class="navbar-item" href="/config.html"> Config </a>
+        </div>
+      </div>
+    </nav>
+  </div>
 
-    ws.onopen = () => {
-      console.log('WebSocket connection opened');
-      addMessage('WebSocket connection opened');
-    };
+    <section class="section">
+        <div class="container">
+            <h1 class="title is-1">Kegs</h1>
 
-    ws.onmessage = (event) => {
-      console.log('Message received:', event.data);
-      addMessage('Received: ' + event.data);
-    };
+            <div class="columns is-multiline" id="kegContainer"></div>
+        </div>
+    </section>
+  </div>
 
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-      addMessage('WebSocket connection closed');
-    };
+    <script>
+      // Navbar burger menu
+      const navbarBurgers = Array.prototype.slice.call(
+        document.querySelectorAll(".navbar-burger"),
+        0
+      );
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      addMessage('WebSocket error: ' + error.message);
-    };
+      if (navbarBurgers.length > 0) {
+        navbarBurgers.forEach((el) => {
+          el.addEventListener("click", () => {
+            const target = el.dataset.target;
+            const $target = document.getElementById(target);
 
-    function addMessage(message) {
-      const messagesDiv = document.getElementById('messages');
-      const messageElement = document.createElement('div');
-      messageElement.textContent = message;
-      messagesDiv.appendChild(messageElement);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-  </script>
+            el.classList.toggle("is-active");
+            $target.classList.toggle("is-active");
+          });
+        });
+      }
+
+        const kegContainer = document.getElementById('kegContainer');
+
+        function createKegCard(kegData) {
+            const column = document.createElement('div');
+            column.classList.add('column', 'is-one-third'); // Responsive columns
+
+            const card = `
+                <div class="card" data-keg-id="${kegData.id}">
+                    <div class="card-content">
+                        <div class="media">
+                            <div class="media-content">
+                                <p class="title is-5">${kegData.name}</p>
+                                <p class="subtitle is-1">${kegData.weight.toFixed(2)} ${kegData.weight_raw_unit || 'kg'}</p>
+                            </div>
+                        </div>
+                        <div class="content is-small">
+                            <p>Full Weight: ${kegData.full_weight.toFixed(2)} ${kegData.weight_raw_unit || 'kg'}</p>
+                            <p>Temperature: ${kegData.temperature?.toFixed(2) || 'N/A'} ${kegData.temperature_raw_unit || ''}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            column.innerHTML = card;
+            return column;
+        }
+
+        // Fetch initial keg data
+        fetch('/api/kegs')
+            .then(response => response.json())
+            .then(kegs => {
+                kegs.forEach(keg => {
+                    kegContainer.appendChild(createKegCard(keg));
+                });
+            });
+
+        // WebSocket connection
+        const socket = new WebSocket('/ws');
+
+        socket.addEventListener('open', (event) => {
+            console.log('WebSocket connection opened:', event);
+        });
+
+        socket.addEventListener('message', (event) => {
+            const updatedKeg = JSON.parse(event.data);
+            // Find the existing keg card and update its content
+            const kegId = updatedKeg.id;
+            const existingCard = document.querySelector(`#kegContainer [data-keg-id="${kegId}"]`);
+            if (existingCard) {
+                existingCard.innerHTML = createKegCard(updatedKeg).innerHTML;
+            }
+        });
+
+        socket.addEventListener('error', (error) => {
+            console.error('WebSocket error:', error);
+        });
+
+        socket.addEventListener('close', (event) => {
+            console.log('WebSocket connection closed:', event);
+        });
+    </script>
+
 </body>
 </html>
