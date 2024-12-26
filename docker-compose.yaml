@@ -1,0 +1,12 @@
+version: "3.6"
+services:
+  vernemq:
+    image: erlio/docker-vernemq:latest
+    container_name: vernemq
+    restart: always
+    ports:
+      - 8888:8888
+      - 1883:1883
+    environment:
+      - DOCKER_VERNEMQ_ACCEPT_EULA=yes
+      - DOCKER_VERNEMQ_USER_CLIENT=client

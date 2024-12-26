@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    #messages { padding: 10px; word-wrap: break-word; }
+    #input { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>WebSocket Test</h1>
+  <div id="messages"></div>
+
+  <script>
+    const ws = new WebSocket('/ws');
+
+    ws.onopen = () => {
+      console.log('WebSocket connection opened');
+      addMessage('WebSocket connection opened');
+    };
+
+    ws.onmessage = (event) => {
+      console.log('Message received:', event.data);
+      addMessage('Received: ' + event.data);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+      addMessage('WebSocket connection closed');
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      addMessage('WebSocket error: ' + error.message);
+    };
+
+    function addMessage(message) {
+      const messagesDiv = document.getElementById('messages');
+      const messageElement = document.createElement('div');
+      messageElement.textContent = message;
+      messagesDiv.appendChild(messageElement);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+  </script>
+</body>
+</html>
