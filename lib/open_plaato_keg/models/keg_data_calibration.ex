@@ -1,6 +1,7 @@
 defmodule OpenPlaatoKeg.Models.KegDataCalibration do
   defstruct id: nil,
-            name: nil,
+            name: "",
+            full_weight: 19,
             weight_calibrate: 0,
             temperature_calibrate: 0
 
@@ -8,6 +9,7 @@ defmodule OpenPlaatoKeg.Models.KegDataCalibration do
     %__MODULE__{
       id: input["id"],
       name: input["name"],
+      full_weight: input["full_weight"],
       weight_calibrate: input["weight_calibrate"],
       temperature_calibrate: input["temperature_calibrate"]
     }
