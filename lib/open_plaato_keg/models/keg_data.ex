@@ -6,7 +6,7 @@ defmodule OpenPlaatoKeg.Models.KegData do
             temperature_raw_unit: nil
 
   def get(id) do
-    case :ets.lookup(:keg_data, id) do
+    case :dets.lookup(:keg_data, id) do
       [{_, model}] -> model
       [] -> nil
     end
@@ -14,12 +14,17 @@ defmodule OpenPlaatoKeg.Models.KegData do
 
   def keys do
     :keg_data
-    |> :ets.tab2list()
+    |> tab2list()
     |> Enum.filter(fn {key, _} -> is_binary(key) end)
     |> Enum.map(&elem(&1, 0))
   end
 
   def insert(%__MODULE__{} = model) do
-    :ets.insert(:keg_data, {model.id, model})
+    :dets.insert(:keg_data, {model.id, model})
+  end
+
+  # :dets doesn't support tab2list
+  defp tab2list(table) do
+    :dets.foldl(fn entry, acc -> [entry | acc] end, [], table)
   end
 end

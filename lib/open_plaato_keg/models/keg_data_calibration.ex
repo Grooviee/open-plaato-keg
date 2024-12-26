@@ -16,13 +16,13 @@ defmodule OpenPlaatoKeg.Models.KegDataCalibration do
   end
 
   def get(id) do
-    case :ets.lookup(:keg_data, {id, :calibration}) do
+    case :dets.lookup(:keg_data, {id, :calibration}) do
       [{_, model}] -> model
       [] -> %__MODULE__{id: id}
     end
   end
 
   def insert(%__MODULE__{} = model) do
-    :ets.insert(:keg_data, {{model.id, :calibration}, model})
+    :dets.insert(:keg_data, {{model.id, :calibration}, model})
   end
 end
