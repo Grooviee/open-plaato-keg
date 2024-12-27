@@ -175,17 +175,17 @@ Merely a showcase how to interact with WebSocket and REST API.
         ]
       ```
 * **Fields in Response:**
-    * `temperature`: Current temperature of the keg in Celsius.
+    * `temperature`: Calculated temperature of the keg (`temperature_raw` + `temperature_calibrate`).
     * `weight_calibrate`: Calibration offset for the weight.
     * `temperature_calibrate`: Calibration offset for the temperature.
     * `full_weight`: Weight of the keg when full in kilograms.
-    * `temperature_raw_unit`:  Unit of the raw temperature reading (°C).
+    * `temperature_raw_unit`:  Unit of the raw temperature reading.
     * `temperature_raw`: Raw temperature value from the sensor.
-    * `weight_raw_unit`: Unit of the raw weight reading (kg).
+    * `weight_raw_unit`: Unit of the raw weight reading.
     * `weight_raw`: Raw weight value from the sensor.
-    * `weight`: Calculated weight of the keg in kilograms.
     * `name`: Name of the keg.
     * `id`: Unique identifier for the keg.
+    * `weight`: Calculated weight of the keg (`weight_raw` + `weight_calibrate`)
 
 ### `/api/kegs/{keg_id}`
 
@@ -289,6 +289,7 @@ Environment variables to set:
 * `BARHELPER_API_KEY` - your API key
 * `BARHELPER_UNIT`- you can leave the default if it is liters
 * `BARHELPER_KEG_MONITOR_MAPPING`
-  * configuration in CSV key-value format `plaato-auth-key:barhelper-custom-keg-monitor-id,plaato-auth-key:barhelper-custom-keg-monitor-id`
-  * eg. "00000000000000000000000000000001:custom-1"
+  * configuration in CSV key-value format:
+    *  "plaato-auth-key:barhelper-custom-keg-monitor-id,plaato-auth-key:barhelper-custom-keg-monitor-id"
+    * eg. "00000000000000000000000000000001:custom-1"
 
