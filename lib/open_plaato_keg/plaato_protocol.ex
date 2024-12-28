@@ -35,7 +35,8 @@ defmodule OpenPlaatoKeg.PlaatoProtocol do
 
   def decode_data({"92", data}) do
     {temperature, unit} = Float.parse(data)
-    [{:temperature_raw, temperature}, {:temperature_raw_unit, unit}]
+    unit_sliced = String.slice(unit, 0, 2)
+    [{:temperature_raw, temperature}, {:temperature_raw_unit, unit_sliced}]
   rescue
     _ ->
       Logger.error("Failed to decode temperature data",
