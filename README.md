@@ -241,6 +241,31 @@ Merely a showcase how to interact with WebSocket and REST API.
   * `500 Internal Server error` - when something is f***** up
 
 
+### `/api/metrics`
+
+* **Method:** `GET`
+* **Description:** Exposes metrics in Prometheus format
+* **Response**: `plaato_keg_weight` and `plaato_keg_temperature` are exposed alongside with Elixir metrics.
+
+```
+# TYPE plaato_keg_weight gauge
+# HELP plaato_keg_weight Weight from Plaato Keg
+plaato_keg_weight{id="33bcbe756b994a6768494d55d1543c74",type="current",unit=""} 1.27
+plaato_keg_weight{id="33bcbe756b994a6768494d55d1543c74",type="calibrate",unit=""} 0
+plaato_keg_weight{id="33bcbe756b994a6768494d55d1543c74",type="raw",unit=""} 1.27
+# TYPE plaato_keg_temperature gauge
+# HELP plaato_keg_temperature Temperature from Plaato Keg
+plaato_keg_temperature{id="33bcbe756b994a6768494d55d1543c74",type="calibrate",unit="°C"} 0
+plaato_keg_temperature{id="33bcbe756b994a6768494d55d1543c74",type="current",unit="°C"} 72.78
+plaato_keg_temperature{id="33bcbe756b994a6768494d55d1543c74",type="raw",unit="°C"} 72.78
+```
+
+### `/api/alive`
+
+* **Method:** `GET`
+* **Description:** Returns if webserver is started
+* **Response**: `200 OK` with body "1"
+
 ### WebSocket
 
 All updates can be received via websocket.

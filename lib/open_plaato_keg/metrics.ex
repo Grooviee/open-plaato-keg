@@ -1,5 +1,6 @@
 defmodule OpenPlaatoKeg.Metrics do
   use Prometheus.Metric
+  require Logger
 
   def init do
     Summary.declare(
@@ -17,18 +18,77 @@ defmodule OpenPlaatoKeg.Metrics do
     )
 
     Gauge.declare(
-      name: :plaato_keg_raw_weight,
-      help: "Raw weight from Plaato Keg",
-      labels: ["unit"],
+      name: :plaato_keg_weight,
+      help: "Weight from Plaato Keg",
+      labels: ["id", "type", "unit"],
       registry: :default
     )
 
     Gauge.declare(
-      name: :plaato_keg_raw_weight,
-      help: "Raw temperature from Plaato Keg",
-      labels: ["unit"],
+      name: :plaato_keg_temperature,
+      help: "Temperature from Plaato Keg",
+      labels: ["id", "type", "unit"],
       registry: :default
     )
+  end
+
+  def publish(keg_data) do
+    if keg_data.temperature_raw do
+      Gauge.set(
+        [
+          name: :plaato_keg_temperature,
+          labels: [keg_data.id, "raw", keg_data.temperature_raw_unit || ""]
+        ],
+        keg_data.temperature_raw
+      )
+
+      Gauge.set(
+        [
+          name: :plaato_keg_temperature,
+          labels: [keg_data.id, "calibrate", keg_data.temperature_raw_unit || ""]
+        ],
+        keg_data.temperature_calibrate
+      )
+
+      Gauge.set(
+        [
+          name: :plaato_keg_temperature,
+          labels: [keg_data.id, "current", keg_data.temperature_raw_unit || ""]
+        ],
+        keg_data.temperature
+      )
+    end
+
+    if keg_data.weight_raw do
+      Gauge.set(
+        [
+          name: :plaato_keg_weight,
+          labels: [keg_data.id, "raw", keg_data.weight_raw_unit || ""]
+        ],
+        keg_data.weight_raw
+      )
+
+      Gauge.set(
+        [
+          name: :plaato_keg_weight,
+          labels: [keg_data.id, "calibrate", keg_data.weight_raw_unit || ""]
+        ],
+        keg_data.weight_calibrate
+      )
+
+      Gauge.set(
+        [
+          name: :plaato_keg_weight,
+          labels: [keg_data.id, "current", keg_data.weight_raw_unit || ""]
+        ],
+        keg_data.weight
+      )
+    end
+  rescue
+    error ->
+      Logger.error("Failed to publish metrics",
+        data: inspect([keg_data: keg_data, error: error], limit: :infinity)
+      )
   end
 
   def scrape_data(format \\ :prometheus_text_format, registry \\ :default) do
