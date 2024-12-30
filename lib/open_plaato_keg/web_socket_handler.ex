@@ -13,13 +13,14 @@ defmodule OpenPlaatoKeg.WebSocketHandler do
     :ok
   end
 
-  def broadcast(message) do
+  def publish(message) do
+    json_message = Poison.encode!(message)
     Registry.dispatch(
       OpenPlaatoKeg.WebSocketConnectionRegistry,
       "websocket_clients",
       fn entries ->
         for {pid, _} <- entries do
-          send(pid, {:broadcast, message})
+          send(pid, {:broadcast, json_message})
         end
       end
     )

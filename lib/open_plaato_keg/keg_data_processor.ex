@@ -38,15 +38,14 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
             state
           end)
 
-        broadcast_to_websocket(new_state)
-
-        if OpenPlaatoKeg.mqtt_config()[:enabled] do
-          publish_to_mqtt(new_state)
-        end
-
-        if weight_changed? and OpenPlaatoKeg.barhelper_config()[:enabled] do
-          publish_to_barhelper(new_state)
-        end
+        publish(new_state, [
+          {&OpenPlaatoKeg.Metrics.publish/1, fn -> true end},
+          {&OpenPlaatoKeg.WebSocketHandler.publish/1, fn -> true end},
+          {&OpenPlaatoKeg.Metrics.publish/1, fn -> true end},
+          {&OpenPlaatoKeg.MqttHandler.publish/1, fn -> OpenPlaatoKeg.mqtt_config()[:enabled] end},
+          {&OpenPlaatoKeg.BarHelper.publish/1,
+           fn -> weight_changed? and OpenPlaatoKeg.barhelper_config()[:enabled] end}
+        ])
 
         Map.from_struct(new_state)
       else
@@ -81,35 +80,17 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     |> PlaatoProtocol.decode_data()
   end
 
-  defp broadcast_to_websocket(data) do
+  defp publish(data, publishers) do
     case KegDataOutput.get(data.id) do
       nil ->
         :skip
 
       %KegDataOutput{} = keg_data ->
-        keg_data
-        |> Poison.encode!()
-        |> OpenPlaatoKeg.WebSocketHandler.broadcast()
-    end
-  end
-
-  defp publish_to_mqtt(data) do
-    case KegDataOutput.get(data.id) do
-      nil ->
-        :skip
-
-      %KegDataOutput{} = keg_data ->
-        OpenPlaatoKeg.MqttHandler.publish(keg_data)
-    end
-  end
-
-  defp publish_to_barhelper(data) do
-    case KegDataOutput.get(data.id) do
-      nil ->
-        :skip
-
-      %KegDataOutput{} = keg_data ->
-        OpenPlaatoKeg.BarHelper.publish(keg_data)
+        Enum.each(publishers, fn {publish_func, condition} ->
+          if condition.() do
+            publish_func.(keg_data)
+          end
+        end)
     end
   end
 end
