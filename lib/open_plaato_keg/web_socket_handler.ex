@@ -15,6 +15,7 @@ defmodule OpenPlaatoKeg.WebSocketHandler do
 
   def publish(message) do
     json_message = Poison.encode!(message)
+
     Registry.dispatch(
       OpenPlaatoKeg.WebSocketConnectionRegistry,
       "websocket_clients",
