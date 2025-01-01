@@ -49,7 +49,8 @@ defmodule OpenPlaatoKeg.MixProject do
       {:poison, "~> 6.0"},
       {:tortoise, "~> 0.10"},
       {:req, "~> 0.5"},
-      {:credo, "~> 1.7", only: [:dev, :ci], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :ci], runtime: false},
+      {:assert_value, "~> 0.1", only: [:dev, :test], runtime: false}
     ]
   end
 

@@ -1,16 +1,33 @@
 defmodule OpenPlaatoKeg.PlaatoProtocol do
   require Logger
 
-  def decode({:hardware, _, _, <<_, _, _, id_1, id_2, _>> <> data} = input) do
-    id = <<id_1, id_2>>
-    {id, data}
-  rescue
-    error ->
-      Logger.error("Failed to decode hardware data",
-        data: inspect([input: input, error: error], limit: :infinity)
-      )
+  def decode({:hardware, _, _, message}) do
+    case String.split(message, "\0", trim: true) do
+      [_, id, data] ->
+        {id, data}
 
-      {:error, error}
+      data ->
+        {:unknown_hardware, data}
+    end
+  end
+
+  def decode({:internal, _, _, message}) do
+    internal_props =
+      message
+      |> String.split("\0", trim: true)
+      |> Enum.chunk_every(2)
+      |> Enum.map(fn [key, value] -> {key, value} end)
+      |> Enum.into(%{})
+
+    {:internal, internal_props}
+  end
+
+  def decode({:hardware_sync, _, _, message}) do
+    props =
+      message
+      |> String.split("\0", trim: true)
+
+    {:hardware_sync, props}
   end
 
   def decode({:notify, _, _, notify}), do: {:notify, notify}
