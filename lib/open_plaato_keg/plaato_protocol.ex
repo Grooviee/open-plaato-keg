@@ -50,7 +50,7 @@ defmodule OpenPlaatoKeg.PlaatoProtocol do
     [{:weight_raw_unit, data}]
   end
 
-  def decode_data({"92", data}) do
+  def decode_data({"69", data}) do
     {temperature, unit} = Float.parse(data)
     unit_sliced = String.slice(unit, 0, 2)
     [{:temperature_raw, temperature}, {:temperature_raw_unit, unit_sliced}]
