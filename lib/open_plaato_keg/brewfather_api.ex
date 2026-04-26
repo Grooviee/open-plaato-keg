@@ -9,7 +9,7 @@ defmodule OpenPlaatoKeg.BrewfatherApi do
 
   def fetch_batches(user_id, api_key) do
     auth = Base.encode64("#{user_id}:#{api_key}")
-    url = "#{@base_url}/batches?include=recipe&limit=50"
+    url = "#{@base_url}/batches?include=measuredOg,measuredFg,estimatedOg,estimatedFg,recipe.style.name,recipe.ibu,recipe.name,estimatedIbu,estimatedColor,batchNotes,tasteNotes&limit=50&order_by=batchNo&order_by_direction=desc"
 
     case Req.get(url, headers: [{"authorization", "Basic #{auth}"}]) do
       {:ok, %{status: 200, body: batches}} when is_list(batches) ->
