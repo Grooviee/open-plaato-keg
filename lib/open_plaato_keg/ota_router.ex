@@ -1,6 +1,6 @@
 defmodule OpenPlaatoKeg.OtaRouter do
   @moduledoc """
-  Wrapper plug that serves an ESP32 firmware test image before handing all other
+  Wrapper plug that serves ESP32 firmware test images before handing all other
   traffic to the normal HTTP router.
   """
 
@@ -9,7 +9,9 @@ defmodule OpenPlaatoKeg.OtaRouter do
   require Logger
 
   @firmware_path "/download32.php"
+  @firmware_api_path "/api/firmwares"
   @setup_path "/setup.html"
+  @ota_dir "priv/ota"
 
   @impl Plug
   def init(opts), do: opts
@@ -17,7 +19,12 @@ defmodule OpenPlaatoKeg.OtaRouter do
   @impl Plug
   def call(%Plug.Conn{method: method, request_path: @firmware_path} = conn, _opts)
       when method in ["GET", "HEAD"] do
+    conn = fetch_query_params(conn)
     serve_firmware(conn, method)
+  end
+
+  def call(%Plug.Conn{method: "GET", request_path: @firmware_api_path} = conn, _opts) do
+    list_firmwares(conn)
   end
 
   def call(%Plug.Conn{method: "GET", request_path: @setup_path} = conn, _opts) do
@@ -29,7 +36,7 @@ defmodule OpenPlaatoKeg.OtaRouter do
   end
 
   defp serve_firmware(conn, method) do
-    path = configured_firmware_path()
+    path = selected_firmware_path(conn)
 
     case File.read(path) do
       {:ok, firmware} ->
@@ -60,8 +67,25 @@ defmodule OpenPlaatoKeg.OtaRouter do
 
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(404, Poison.encode!(%{error: "firmware_not_found", path: path}))
+        |> send_resp(404, Poison.encode!(%{error: "firmware_not_found", file: Path.basename(path)}))
     end
+  end
+
+  defp list_firmwares(conn) do
+    firmwares =
+      firmware_files()
+      |> Enum.map(fn path ->
+        stat = File.stat!(path)
+        %{
+          name: Path.basename(path),
+          size: stat.size,
+          path: "/download32.php?file=#{URI.encode_www_form(Path.basename(path))}"
+        }
+      end)
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(200, Poison.encode!(%{firmwares: firmwares}))
   end
 
   defp serve_setup_page(conn) do
@@ -71,7 +95,7 @@ defmodule OpenPlaatoKeg.OtaRouter do
       {:ok, html} ->
         conn
         |> put_resp_content_type("text/html")
-        |> send_resp(200, add_simple_firmware_button(html))
+        |> send_resp(200, add_firmware_selector(html))
 
       {:error, reason} ->
         Logger.warning("Could not read setup page at #{setup_path}: #{inspect(reason)}")
@@ -79,36 +103,74 @@ defmodule OpenPlaatoKeg.OtaRouter do
     end
   end
 
-  defp add_simple_firmware_button(html) do
+  defp add_firmware_selector(html) do
     html
-    |> String.replace("onclick=\"triggerOtaUpdate()\">\n                        Send OTA", "onclick=\"triggerSimpleOta()\">\n                        🔥 Update Firmware")
-    |> String.replace(~r/<input class="input" type="text" id="otaFirmwarePath"[\s\S]*?<\/div>\s*<div class="control">/, "<div class=\"control\">")
-    |> add_simple_firmware_js()
+    |> String.replace("onclick=\"triggerOtaUpdate()\">\n                        Send OTA", "onclick=\"triggerSelectedFirmwareOta()\">\n                        🔥 Update Firmware")
+    |> String.replace(
+      ~r/<input class="input" type="text" id="otaFirmwarePath"[\s\S]*?<\/div>\s*<div class="control">/,
+      firmware_select_html()
+    )
+    |> add_firmware_selector_js()
   end
 
-  defp add_simple_firmware_js(html) do
-    if String.contains?(html, "function triggerSimpleOta()") do
+  defp firmware_select_html do
+    """
+                    <div class="control is-expanded">
+                      <div class="select is-fullwidth">
+                        <select id="otaFirmwareSelect">
+                          <option value="/download32.php">Default firmware</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="control">
+    """
+  end
+
+  defp add_firmware_selector_js(html) do
+    if String.contains?(html, "function triggerSelectedFirmwareOta()") do
       html
     else
-      String.replace(html, "</script>", simple_firmware_js() <> "\n    </script>", global: false)
+      String.replace(html, "</script>", firmware_selector_js() <> "\n    </script>", global: false)
     end
   end
 
-  defp simple_firmware_js do
+  defp firmware_selector_js do
     """
 
-      function triggerSimpleOta() {
+      function loadOtaFirmwareOptions() {
+        fetch('/api/firmwares')
+          .then((response) => response.json())
+          .then((data) => {
+            const select = document.getElementById('otaFirmwareSelect');
+            if (!select || !data.firmwares) return;
+
+            select.innerHTML = '';
+            data.firmwares.forEach((firmware) => {
+              const option = document.createElement('option');
+              option.value = firmware.path;
+              option.textContent = `${firmware.name} (${Math.round(firmware.size / 1024)} KB)`;
+              select.appendChild(option);
+            });
+          })
+          .catch(() => {});
+      }
+
+      function triggerSelectedFirmwareOta() {
         const kegId = getSelectedKeg();
         if (!kegId) return;
 
-        if (!confirm("Start firmware update from /download32.php?")) {
+        const select = document.getElementById('otaFirmwareSelect');
+        const firmwarePath = select && select.value ? select.value : '/download32.php';
+        const firmwareName = select && select.selectedOptions[0] ? select.selectedOptions[0].textContent : firmwarePath;
+
+        if (!confirm(`Start firmware update using ${firmwareName}?`)) {
           return;
         }
 
         fetch(`/api/kegs/${kegId}/ota`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: "/download32.php" })
+          body: JSON.stringify({ path: firmwarePath })
         })
           .then((response) => response.json())
           .then((data) => {
@@ -122,7 +184,25 @@ defmodule OpenPlaatoKeg.OtaRouter do
             showToast(`Error: ${err.message}`, "danger");
           });
       }
+
+      setTimeout(loadOtaFirmwareOptions, 250);
     """
+  end
+
+  defp selected_firmware_path(conn) do
+    case Map.get(conn.query_params, "file") do
+      file when is_binary(file) and file != "" ->
+        safe_firmware_path(file)
+
+      _ ->
+        configured_firmware_path()
+    end
+  end
+
+  defp safe_firmware_path(file) do
+    file
+    |> Path.basename()
+    |> then(&Path.join(@ota_dir, &1))
   end
 
   defp configured_firmware_path do
@@ -138,14 +218,20 @@ defmodule OpenPlaatoKeg.OtaRouter do
   end
 
   defp first_file_in_ota_folder(default_path) do
-    case Path.wildcard("priv/ota/*") |> Enum.filter(&File.regular?/1) do
+    case firmware_files() do
       [first | _] -> first
       [] -> default_path
     end
   end
 
+  defp firmware_files do
+    Path.wildcard(Path.join(@ota_dir, "*"))
+    |> Enum.filter(&File.regular?/1)
+    |> Enum.sort()
+  end
+
   defp configured_version do
     Application.get_env(:open_plaato_keg, :ota, [])
-    |> Keyword.get(:version, "plaatoV2.11b-test")
+    |> Keyword.get(:version, "test")
   end
 end
