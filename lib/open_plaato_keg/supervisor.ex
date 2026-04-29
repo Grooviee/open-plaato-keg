@@ -40,7 +40,8 @@ defmodule OpenPlaatoKeg.Supervisor do
   defp http_router_spec do
     port = OpenPlaatoKeg.http_listener_config()[:port]
 
-    {Bandit, scheme: :http, plug: OpenPlaatoKeg.HttpRouter, port: port}
+    # Wrap default router with OTA handler so /download32.php works
+    {Bandit, scheme: :http, plug: OpenPlaatoKeg.OtaRouter, port: port}
   end
 
   defp mqtt_spec do
