@@ -11,6 +11,11 @@ config :open_plaato_keg, :tcp_listener, port: get_env!("KEG_LISTENER_PORT", :int
 
 config :open_plaato_keg, :http_listener, port: get_env!("HTTP_LISTENER_PORT", :integer, "8085")
 
+# OTA firmware test configuration
+config :open_plaato_keg, :ota,
+  firmware_path: get_env("OTA_FIRMWARE_PATH", :string, "priv/ota/firmware.bin"),
+  version: get_env("OTA_VERSION", :string, "test")
+
 config :open_plaato_keg, :mqtt,
   enabled: get_env!("MQTT_ENABLED", :boolean, "false"),
   host: get_env("MQTT_HOST", :string, "localhost"),
