@@ -6,6 +6,14 @@
     <title>Scale Setup - Open Plaato</title>
     <style>
       @import url("style.css");
+
+      .ota-update-field .ota-warning {
+        margin: 0.75rem 0 1rem;
+      }
+
+      .ota-update-actions {
+        margin-top: 0.75rem;
+      }
     </style>
     <link rel="stylesheet" href="/theme.css">
   </head>
@@ -586,26 +594,31 @@
               <tr>
                 <td><strong>Manual OTA Update</strong></td>
                 <td>
-                  <div class="field has-addons">
-                    <div class="control is-expanded">
-                      <input class="input" type="text" id="otaFirmwarePath"
-                             placeholder="/firmware/PlaatoKegFW_2-0-10a.bin or full https URL" />
-                    </div>
+                  <div class="field ota-update-field">
                     <div class="control">
-                      <button class="button is-danger" type="button" onclick="triggerOtaUpdate()">
-                        Send OTA
+                      <div class="select is-fullwidth">
+                        <select id="otaFirmwareSelect">
+                          <option value="">Loading firmware files...</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p class="help has-text-danger ota-warning">
+                      Warning: OTA is at your own risk. Using the wrong firmware can permanently brick the scale.
+                    </p>
+                    <div class="control ota-update-actions">
+                      <button class="button is-danger" type="button" id="otaUpdateButton" onclick="triggerOtaUpdate()">
+                        Update Firmware
                       </button>
                     </div>
                   </div>
-                  <p class="help has-text-danger">
-                    Warning: OTA is at your own risk. Using the wrong firmware can permanently brick the scale.
-                  </p>
                 </td>
               </tr>
             </tbody>
           </table>
         `;
         document.getElementById("currentSettings").innerHTML = html;
+        renderOtaFirmwareOptions();
+        loadOtaFirmwareOptions();
       }
 
       function clearActiveButtons() {
@@ -931,6 +944,72 @@
         sendCommand("sensitivity", { value: level.toString() });
       }
 
+      let otaFirmwareOptions = [];
+      let otaFirmwareOptionsLoaded = false;
+      let otaFirmwareOptionsLoading = false;
+
+      function renderOtaFirmwareOptions() {
+        const select = document.getElementById("otaFirmwareSelect");
+        const button = document.getElementById("otaUpdateButton");
+        if (!select) return;
+
+        const previousValue = select.value;
+        select.innerHTML = "";
+
+        if (otaFirmwareOptions.length === 0) {
+          const option = document.createElement("option");
+          option.value = "";
+          option.textContent = otaFirmwareOptionsLoaded
+            ? "No firmware files found in /priv/ota"
+            : "Loading firmware files...";
+          select.appendChild(option);
+          if (button) button.disabled = true;
+          return;
+        }
+
+        otaFirmwareOptions.forEach((firmware) => {
+          const option = document.createElement("option");
+          option.value = firmware.path;
+          option.textContent = `${firmware.name} (${Math.round(firmware.size / 1024)} KB)`;
+          select.appendChild(option);
+        });
+
+        if (previousValue && otaFirmwareOptions.some((firmware) => firmware.path === previousValue)) {
+          select.value = previousValue;
+        }
+
+        if (button) button.disabled = false;
+      }
+
+      async function loadOtaFirmwareOptions() {
+        if (otaFirmwareOptionsLoaded || otaFirmwareOptionsLoading) {
+          return;
+        }
+
+        otaFirmwareOptionsLoading = true;
+        try {
+          const res = await fetch("/api/firmwares");
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || `HTTP ${res.status}`);
+          }
+
+          otaFirmwareOptions = Array.isArray(data.firmwares) ? data.firmwares : [];
+          otaFirmwareOptionsLoaded = true;
+          renderOtaFirmwareOptions();
+        } catch (err) {
+          const select = document.getElementById("otaFirmwareSelect");
+          const button = document.getElementById("otaUpdateButton");
+          if (select) {
+            select.innerHTML = '<option value="">Could not load firmware files</option>';
+          }
+          if (button) button.disabled = true;
+          console.error("Failed to load OTA firmware options:", err);
+        } finally {
+          otaFirmwareOptionsLoading = false;
+        }
+      }
+
       async function triggerOtaUpdate() {
         const kegId = getSelectedKeg();
         if (!kegId) {
@@ -938,23 +1017,23 @@
           return;
         }
 
-        const input = document.getElementById("otaFirmwarePath");
-        const raw = input ? input.value.trim() : "";
-        if (!raw) {
-          showToast("Enter a firmware URL or server path for OTA.", "warning");
+        const select = document.getElementById("otaFirmwareSelect");
+        const path = select ? select.value : "";
+        const firmwareName = select && select.selectedOptions[0] ? select.selectedOptions[0].textContent : path;
+        if (!path) {
+          showToast("Select a firmware file for OTA.", "warning");
           return;
         }
 
-        const body =
-          raw.startsWith("http://") || raw.startsWith("https://")
-            ? { url: raw }
-            : { path: raw };
+        if (!confirm(`Start firmware update using ${firmwareName}?`)) {
+          return;
+        }
 
         try {
           const res = await fetch(`/api/kegs/${encodeURIComponent(kegId)}/ota`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ path }),
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {

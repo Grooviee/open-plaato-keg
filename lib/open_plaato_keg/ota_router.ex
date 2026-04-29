@@ -67,7 +67,10 @@ defmodule OpenPlaatoKeg.OtaRouter do
 
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(404, Poison.encode!(%{error: "firmware_not_found", file: Path.basename(path)}))
+        |> send_resp(
+          404,
+          Poison.encode!(%{error: "firmware_not_found", file: Path.basename(path)})
+        )
     end
   end
 
@@ -76,6 +79,7 @@ defmodule OpenPlaatoKeg.OtaRouter do
       firmware_files()
       |> Enum.map(fn path ->
         stat = File.stat!(path)
+
         %{
           name: Path.basename(path),
           size: stat.size,
@@ -104,8 +108,19 @@ defmodule OpenPlaatoKeg.OtaRouter do
   end
 
   defp add_firmware_selector(html) do
+    if String.contains?(html, "otaFirmwareSelect") do
+      html
+    else
+      add_legacy_firmware_selector(html)
+    end
+  end
+
+  defp add_legacy_firmware_selector(html) do
     html
-    |> String.replace("onclick=\"triggerOtaUpdate()\">\n                        Send OTA", "onclick=\"triggerSelectedFirmwareOta()\">\n                        🔥 Update Firmware")
+    |> String.replace(
+      "onclick=\"triggerOtaUpdate()\">\n                        Send OTA",
+      "onclick=\"triggerSelectedFirmwareOta()\">\n                        🔥 Update Firmware"
+    )
     |> String.replace(
       ~r/<input class="input" type="text" id="otaFirmwarePath"[\s\S]*?<\/div>\s*<div class="control">/,
       firmware_select_html()
@@ -130,7 +145,9 @@ defmodule OpenPlaatoKeg.OtaRouter do
     if String.contains?(html, "function triggerSelectedFirmwareOta()") do
       html
     else
-      String.replace(html, "</script>", firmware_selector_js() <> "\n    </script>", global: false)
+      String.replace(html, "</script>", firmware_selector_js() <> "\n    </script>",
+        global: false
+      )
     end
   end
 
@@ -212,7 +229,7 @@ defmodule OpenPlaatoKeg.OtaRouter do
 
     cond do
       File.exists?(configured) -> configured
-      File.exists?("priv/ota/plaatoV2.11b") -> "priv/ota/plaatoV2.11b"
+      File.exists?("priv/ota/plaatoV2.11b.bin") -> "priv/ota/plaatoV2.11b.bin"
       true -> first_file_in_ota_folder(configured)
     end
   end
