@@ -11,7 +11,6 @@ defmodule OpenPlaatoKeg.OtaRouter do
   @firmware_path "/download32.php"
   @firmware_api_path "/api/firmwares"
   @setup_path "/setup.html"
-  @ota_dir "priv/ota"
 
   @impl Plug
   def init(opts), do: opts
@@ -219,7 +218,7 @@ defmodule OpenPlaatoKeg.OtaRouter do
   defp safe_firmware_path(file) do
     file
     |> Path.basename()
-    |> then(&Path.join(@ota_dir, &1))
+    |> then(&Path.join(ota_dir(), &1))
   end
 
   defp configured_firmware_path do
@@ -227,9 +226,11 @@ defmodule OpenPlaatoKeg.OtaRouter do
       Application.get_env(:open_plaato_keg, :ota, [])
       |> Keyword.get(:firmware_path, "priv/ota/firmware.bin")
 
+    default_firmware = Path.join(ota_dir(), "plaatoV2.11b.bin")
+
     cond do
       File.exists?(configured) -> configured
-      File.exists?("priv/ota/plaatoV2.11b.bin") -> "priv/ota/plaatoV2.11b.bin"
+      File.exists?(default_firmware) -> default_firmware
       true -> first_file_in_ota_folder(configured)
     end
   end
@@ -242,9 +243,13 @@ defmodule OpenPlaatoKeg.OtaRouter do
   end
 
   defp firmware_files do
-    Path.wildcard(Path.join(@ota_dir, "*"))
+    Path.wildcard(Path.join(ota_dir(), "*"))
     |> Enum.filter(&File.regular?/1)
     |> Enum.sort()
+  end
+
+  defp ota_dir do
+    Path.join(:code.priv_dir(:open_plaato_keg), "ota")
   end
 
   defp configured_version do
